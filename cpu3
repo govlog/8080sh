@@ -1,0 +1,199 @@
+#!/bin/bash
+
+declare -a mem_array
+
+mem_array=()
+rom_file="memarray"
+
+
+
+# convertit une suite de chiffre hexadecimal dans un array d'integer (notre memoire emulee)
+function load_code () {
+
+
+      echo -n "ram reset (64K) => "
+
+      for i in {0..65535}; do mem_array[$i]=0 ; done && echo ok
+
+      ((p=0))
+
+      echo -n "chargement du code => "
+      while read -n2 hex ; do
+
+		if [[ $hex =~ [0-9a-fA-F] ]]; then
+
+			mem_array[$p]=$((0x$hex))
+			((p++))
+
+		fi
+
+
+      done < <(cat $rom_file) && echo ok
+}
+
+
+# mov a,REG
+function _127 () { ((pos++)); } # mov a,a
+function _120 () { ((rega=regb,pos++)); } # mov a,b
+function _121 () { ((rega=regc,pos++)); } # mov a,c
+function _122 () { ((rega=regd,pos++)); } # mov a,d
+function _123 () { ((rega=rege,pos++)); } # mov a,e
+function _124 () { ((rega=regh,pos++)); } # mov a,l
+function _125 () { ((rega=regl,pos++)); } # mov a,m
+
+# 16 bits operation !
+function _127 () { ((rega=mem_array[(regh<<8)+regl],pos++)); } # mov A,M (A <- HL)
+function _10  () { ((rega=mem_array[(regb<<8)+regc],pos++)); } # ldax b  (A <- BC)
+function _26  () { ((rega=mem_array[(regd<<8)+rege],pos++)); } # ldax d  (A <- DE)
+function _58 () { ((rega=mem_array[(mem_array[pos+1]<<8)+mem_array[pos+2]],pos+=3)); } # lda WORD
+
+
+# mov b,REG
+function _71 () { ((regb=rega,pos++)); }  # mov b,a
+function _64 () { ((pos++)); }  # mov b,b
+function _65 () { ((regb=regc,pos++)); }  # mov b,c
+function _66 () { ((regb=regd,pos++)); }  # mov b,d
+function _67 () { ((regb=rege,pos++)); }  # mov b,e
+function _68 () { ((regb=regh,pos++)); }  # mov b,h
+function _69 () { ((regb=regl,pos++)); }  # mov b,l
+function _70 () { ((regb=mem_array[(regh<<8)+regl],pos++)); } # mov B,M (B <- HL)
+
+#mov c,REG
+function _79 () { ((regc=rega,pos++)); }  # mov c,a
+function _72 () { ((regc=regb,pos++)); }  # mov c,b
+function _73 () { ((pos++)); }  # mov c,c
+function _74 () { ((regc=regd,pos++)); }  # mov c,d
+function _75 () { ((regc=rege,pos++)); }  # mov c,e
+function _76 () { ((regc=regh,pos++)); }  # mov c,h
+function _77 () { ((regc=regl,pos++)); }  # mov c,l
+function _78 () { ((regc=mem_array[(regh<<8)+regl],pos++)); } # mov c,M (C <-HL)
+
+# mov d,REG
+function _87 () { ((regd=rega,pos++)); }  # mov d,a
+function _80 () { ((regd=regb,pos++)); }  # mov d,b
+function _81 () { ((regd=regc,pos++)); }  # mov d,c
+function _82 () { ((pos++)); }  # mov d,d
+function _83 () { ((regd=rege,pos++)); }  # mov d,e
+function _84 () { ((regd=regh,pos++)); }  # mov d,h
+function _85 () { ((regd=regl,pos++)); }  # mov d,l
+function _86 () { ((regd=mem_array[(regh<<8)+regl],pos++)); } # mov d,M (D <- HL)
+
+# mov e,REG
+function _95 () { ((rege=rega,pos++)); }  # mov e,a
+function _88 () { ((rege=regb,pos++)); }  # mov e,b
+function _89 () { ((rege=regc,pos++)); }  # mov e,c
+function _90 () { ((rege=regd,pos++)); }  # mov e,d
+function _91 () { ((pos++)); }  # mov e,e
+function _92 () { ((rege=regh,pos++)); }  # mov e,h
+function _93 () { ((rege=regl,pos++)); }  # mov e,l
+function _94 () { ((rege=mem_array[(regh<<8)+regl],pos++)); } # mov e,M (E <- HL)
+
+
+# mov h,REG
+function _103 () { ((regh=rega,pos++)); }  # mov h,a
+function _96 () { ((regh=regb,pos++)); }  # mov h,b
+function _97 () { ((regh=regc,pos++)); }  # mov h,c
+function _98 () { ((regh=regd,pos++)); }  # mov h,d
+function _99 () { ((regh=rege,pos++)); }  # mov h,e
+function _100 () { ((pos++)); }  # mov h,h
+function _101 () { ((regh=regl,pos++)); }  # mov h,l
+function _102 () { ((regh=mem_array[(regh<<8)+regl],pos++)); } # mov h,M (h <- HL)
+
+# mov l,reg
+
+# mov l,REG
+function _111 () { ((regl=rega,pos++)); }  # mov l,a
+function _104 () { ((regl=regb,pos++)); }  # mov l,b
+function _105 () { ((regl=regc,pos++)); }  # mov l,c
+function _106 () { ((regl=regd,pos++)); }  # mov l,d
+function _107 () { ((regl=rege,pos++)); }  # mov l,e
+function _108 () { ((regl=regh,pos++)); }  # mov l,h
+function _109 () { ((pos++)); }  # mov l,l
+function _110 () { ((regl=mem_array[(regh<<8)+regl],pos++)); } # mov l,M (l <- HL)
+
+
+# reg vers (HL)
+function _119 () { ((mem_array[(regh<<8)+regl]=rega,pos++)); }  # mov
+function _112 () { ((mem_array[(regh<<8)+regl]=regb,pos++)); }  # mov l,a
+function _113 () { ((mem_array[(regh<<8)+regl]=regc,pos++)); }  # mov l,a
+function _114 () { ((mem_array[(regh<<8)+regl]=regd,pos++)); }  # mov l,a
+function _115 () { ((mem_array[(regh<<8)+regl]=rege,pos++)); }  # mov l,a
+function _116 () { ((mem_array[(regh<<8)+regl]=regh,pos++)); }  # mov l,a
+function _117 () { ((mem_array[(regh<<8)+regl]=regl,pos++)); }  # mov l,a
+
+
+#MVI
+function _62 () { ((rega=mem_array[pos+1],pos+=2)); }
+function _6  () { ((regb=mem_array[pos+1],pos+=2)); }
+function _14 () { ((regc=mem_array[pos+1],pos+=2)); }
+function _22 () { ((regd=mem_array[pos+1],pos+=2)); }
+function _30 () { ((rege=mem_array[pos+1],pos+=2)); }
+function _38 () { ((regh=mem_array[pos+1],pos+=2)); }
+function _46 () { ((regl=mem_array[pos+1],pos+=2)); }
+
+
+function _54 () { ((mem_array[(regh<<8)+regl]=mem_array[pos+1],pos+=2)); }
+function _2  () { ((mem_array[(regb<<8)+regc]=rega,pos++)) ; }                          #stax B
+function _18 () { ((mem_array[(regd<<8)+rege]=rega,pos++)) ; }                          #stax D
+function _50 () { ((mem_array[(mem_array[pos+1]<<8)+mem_array[pos+2]]=rega,pos+=3)) ; } #STA word
+
+
+
+# 16 bit transfer instructions :
+
+function _1 ()  { ((regb=mem_array[pos+1],regc=mem_array[pos+2],pos+=3)) ; }
+function _17 () { ((regd=mem_array[pos+1],rege=mem_array[pos+2],pos+=3)) ; }
+function _33 () { ((regh=mem_array[pos+1],regl=mem_array[pos+2],pos+=3)) ; }
+function _49 () { ((regsp=mem_array[(mem_array[pos+1]<<8)+mem_array[pos+2]],pos+=3)) ; }
+
+function _42 () { ((mpos=(mem_array[pos+1]<<8)+mem_array[pos+2],regh=mem_array[mpos],regl=mem_array[mpos+1],pos+=3)) ; }
+function _34 () { ((mpos=(mem_array[pos+1]<<8)+mem_array[pos+2],mem_array[mpos]=regh,mem_array[mpos+1]=regl,pos+=3)) ; }
+
+function _249 () { ((regsp=(regh<<8)+regl,pos+=1)) ; }
+function _235 () { ((t=regh,regh=regd,regd=t,t=regl,regl=rege,rege=t,pos+=1)) ; }
+
+function _227 () { ((t=regh,regh=mem_array[regsp+1],mem_array[regsp+1]=t,t=regl,regl=mem_array[regsp],mem_array[regsp]=t,pos++)); }
+
+
+
+function _255 () {
+		 stop=$(date +%S.%N)
+        	 echo "Arret du CPU, duree d'execution => "$(echo "scale=2;$stop-$start"|bc)
+		 echo "opcodes executes => $count" ;
+		 echo "registres        => $rega,$regb,$regc,$regd,$rege, H => $regh, L => $regl ;; SP => $regsp | CP => $regcp"
+		 exit
+}
+
+
+
+function reset_cpu () {
+
+	(( pos=0,rega=0,regb=0,regc=0,regd=0,rege=0,regh=0,regl=0,regsp=0,regcp=0 ))
+
+}
+
+
+function _8080 () {
+
+	echo "Demarrage du CPU "
+	echo ${mem_array[111]}
+	start=$(date +%S.%N)
+	while ((1)); do
+
+		_${mem_array[pos]}
+		((count++))
+
+	done
+
+}
+
+load_code
+mem_array[65195]=42
+mem_array[56814]=111
+mem_array[41421]=14
+mem_array[41422]=1
+
+#echo ${mem_array[*]}
+
+reset_cpu
+_8080
