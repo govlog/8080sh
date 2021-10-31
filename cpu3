@@ -5,7 +5,7 @@ declare -a mem_array
 mem_array=()
 rom_file="memarray"
 
-
+#ceci est un test.
 
 # convertit une suite de chiffre hexadecimal dans un array d'integer (notre memoire emulee)
 function load_code () {
@@ -47,7 +47,6 @@ function _10  () { ((rega=mem_array[(regb<<8)+regc],pos++)); } # ldax b  (A <- B
 function _26  () { ((rega=mem_array[(regd<<8)+rege],pos++)); } # ldax d  (A <- DE)
 function _58 () { ((rega=mem_array[(mem_array[pos+1]<<8)+mem_array[pos+2]],pos+=3)); } # lda WORD
 
-
 # mov b,REG
 function _71 () { ((regb=rega,pos++)); }  # mov b,a
 function _64 () { ((pos++)); }  # mov b,b
@@ -87,7 +86,6 @@ function _91 () { ((pos++)); }  # mov e,e
 function _92 () { ((rege=regh,pos++)); }  # mov e,h
 function _93 () { ((rege=regl,pos++)); }  # mov e,l
 function _94 () { ((rege=mem_array[(regh<<8)+regl],pos++)); } # mov e,M (E <- HL)
-
 
 # mov h,REG
 function _103 () { ((regh=rega,pos++)); }  # mov h,a
